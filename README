@@ -1,0 +1,20 @@
+Description: Static mesh deformed through vertex shaders and lit using per-pixel bump mapping.
+
+Dependencies used:
+CanvasMatrix4.js
+GLSL noise algorithm from: https://github.com/ashima/webgl-noise/wiki
+Textures from: http://www.rendertextures.com/category/water/seamless-water/
+
+Tested with: FireFox, Chrome, and Safari (with WebGL enabled) on Windows, OS X, and Linux.
+
+Details:
+On load it generates a static mesh of 80 * 80 * 2 triangles, binds a diffuse texture and a normal texture, and then renders it using a shader that:
+
+1. Generates the tangent and binormal vectors, then the normal vector from it.
+2. Transforms camera and light vectors from eye space to tangent space.
+3. Pass these values from the vertex shader to the fragment shader.
+3. Samples diffuse and normal textures.
+4. Calculates light intensities from transformed light/camera vectors and the normal read from texture.
+5. Set the result as the fragment color.
+
+By doing this, it results in an animated mesh and texture combination that has per-pixel lighting and bump mapping enabled.
