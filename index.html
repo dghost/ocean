@@ -25,7 +25,6 @@
         
         varying vec3 eyeVec;
         varying vec3 lightVec;
-        varying float distance;
         varying vec2 texCoords;
         
         
@@ -149,9 +148,9 @@
    	 		neigh2.z += snoise(vec3(neigh2.x * in_noiseScale,neigh2.y * in_noiseScale,time));
    	 		neigh3.z += snoise(vec3(neigh3.x * in_noiseScale,neigh3.y * in_noiseScale,time));
    	 		
-   	 		vec3 tangent = normalize(mat3(NormalMatrix) * (neigh0 - neigh2));
-    		vec3 binormal = normalize(mat3(NormalMatrix) * (neigh1 - neigh3));
-            vec3 normal = normalize(cross(tangent,binormal));
+   	 		vec3 tangent = mat3(NormalMatrix) * (neigh0 - neigh2);
+    		vec3 binormal = mat3(NormalMatrix) * (neigh1 - neigh3);
+            vec3 normal = cross(tangent,binormal);
             
             
             
@@ -167,21 +166,18 @@
             
             vec3 vertexPos = (ModelviewMatrix * pos).xyz;
             lightPos -= vertexPos;
-            distance = length(lightPos);
             
-            vec3 lPos = normalize(lightPos);
-            vec3 vPos = normalize(vertexPos);
             
             vec3 view;
-            view.x = dot(lPos,tangent);
-            view.y = dot(lPos,binormal);
-            view.z = dot(lPos,normal);
+            view.x = dot(lightPos,tangent);
+            view.y = dot(lightPos,binormal);
+            view.z = dot(lightPos,normal);
             
             lightVec = view;
             
-            view.x = dot(vPos,tangent);
-            view.y = dot(vPos,binormal);
-            view.z = dot(vPos,normal);
+            view.x = dot(vertexPos,tangent);
+            view.y = dot(vertexPos,binormal);
+            view.z = dot(vertexPos,normal);
             
             eyeVec = view;
             
@@ -197,8 +193,6 @@
         precision highp float;
         varying vec3 eyeVec;
         varying vec3 lightVec;
-        varying float distance;
-        
         varying vec2 texCoords;
         
      	
@@ -214,7 +208,7 @@
      	
         void main(void)
         {
-            
+            float distance = length(lightVec);
         	float distance2 = distance * distance;
             vec3 lVec = normalize(lightVec);
             vec3 eVec = normalize(-eyeVec);
