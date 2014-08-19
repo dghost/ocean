@@ -195,17 +195,80 @@
         varying vec3 lightVec;
         varying vec2 texCoords;
         
-     	
-     	uniform vec3 in_Diffuse;
-        uniform vec3 in_Specular;
-        uniform float in_Shininess;
      	uniform float in_Intensity;
      	uniform vec3 in_Attenuation;
      	uniform vec3 in_LightColor;
      	
      	uniform sampler2D texture0;
         uniform sampler2D texture1;
-     	
+ 
+		float roughness = 0.75;
+		float R0 = 0.25;
+		float roughnessSquared = roughness * roughness;
+
+		void setRoughness(float rough)
+		{
+			roughnessSquared = rough * rough;
+		}
+
+		vec4 lightContribution(vec3 L, vec3 N, vec3 E)
+		{
+	
+			float NdotV = dot(N, E);
+			float NdotL = dot(N, L);
+			float angleVN = acos(NdotV);
+
+			float diffuse = 0.0;
+			float specular = 0.0;
+	
+			float angleLN = acos(NdotL);
+	
+			float alpha = max(angleVN, angleLN);
+			float beta = min(angleVN, angleLN);
+			float gamma = dot(E - N * dot(E, N), L - N * dot(L, N));
+	
+	
+			// calculate A and B
+			float A = 1.0 - 0.5 * (roughnessSquared / (roughnessSquared + 0.57));
+	
+			float B = 0.45 * (roughnessSquared / (roughnessSquared + 0.09));
+	
+			float C = sin(alpha) * tan(beta);
+	
+			// put it all together
+			diffuse = max(0.0,NdotL) * (A + B * max(0.0, gamma) * C);
+			//L1 = max(0.0, L1);
+	
+			if(NdotL > 0.0)
+			{
+				vec3 H = normalize(L + E);
+		
+				float NdotH = max(dot(N,H),0.0);
+				float VdotH = max(dot(E,H),0.0);
+		
+				// geometric attenuation
+				float NH2 = 2.0 * NdotH;
+				float g1 = (NH2 * NdotV) / VdotH;
+				float g2 = (NH2 * NdotL) / VdotH;
+				float geoAtt = min(1.0, min(g1, g2));
+		
+				// roughness (or: microfacet distribution function)
+				// beckmann distribution function
+				float r1 = 1.0 / ( 4.0 * roughnessSquared * pow(NdotH, 4.0));
+				float r2 = (NdotH * NdotH - 1.0) / (roughnessSquared * NdotH * NdotH);
+				float rough = r1 * exp(r2);
+		
+				// fresnel
+				// Schlick approximation
+				float fresnel = pow(1.0 - VdotH, 5.0);
+				fresnel *= (1.0 - R0);
+				fresnel += R0;
+		
+				specular = NdotL * (fresnel * geoAtt * rough) / (NdotV * NdotL * 3.14);
+		
+			}
+			return vec4(diffuse + specular,diffuse,specular,NdotL);
+		}    	
         void main(void)
         {
             float distance = length(lightVec);
@@ -219,16 +282,12 @@
             bump *= 2.0;
             bump -= 1.0;
             
+            vec3 light = vec3(0.0);
+            vec4 lighting = lightContribution(lVec,bump,eVec);
+                                    
+            light = vec3(lighting.x);
             
-        	float diffuse = max(dot(bump,lVec),0.0);
-            
-        	vec3 reflection = reflect(-lVec,bump);
-            
-            float shine = pow(clamp(dot(reflection,eVec), 0.0,1.0), in_Shininess);
-            
-            vec3 light = shine * in_Specular + diffuse * in_Diffuse;
-            
-			light *=  in_Intensity / (in_Attenuation.x + (in_Attenuation.y * distance) + (in_Attenuation.z * distance2));
+	//		light = lighting.x * (  in_Intensity / (in_Attenuation.x + (in_Attenuation.y * distance) + (in_Attenuation.z * distance2)));
             gl_FragColor.xyz = texColor * light * in_LightColor;
             gl_FragColor.a = 1.0;
         }
@@ -310,6 +369,15 @@
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T,gl.REPEAT);
             gl.generateMipmap(gl.TEXTURE_2D);
+			var ext = (
+			  gl.getExtension('EXT_texture_filter_anisotropic') ||
+			  gl.getExtension('MOZ_EXT_texture_filter_anisotropic') ||
+			  gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic')
+			);
+			if (ext){
+			  var max = gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+			  gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, max);
+			}            
             gl.bindTexture(gl.TEXTURE_2D, null);
         }
         
@@ -476,10 +544,7 @@
                 gl.uniform1f(gl.getUniformLocation(prog,"in_Time"),timeElapsed / 2.0);
                 gl.uniform1f(gl.getUniformLocation(prog,"in_noiseScale"),1.0 / 12.0);
                 
-                gl.uniform3f(gl.getUniformLocation(prog,"in_Diffuse"),1.0,1.0,1.0);
-                gl.uniform3f(gl.getUniformLocation(prog,"in_Specular"),0.6,0.6,0.6);
-                gl.uniform1f(gl.getUniformLocation(prog,"in_Shininess"),25.0);
-                gl.uniform1f(gl.getUniformLocation(prog,"in_Intensity"),22.0);
+                gl.uniform1f(gl.getUniformLocation(prog,"in_Intensity"),75.0);
                 gl.uniform3f(gl.getUniformLocation(prog,"in_Attenuation"),0.2,0.75,0.05);
                 gl.uniform3f(gl.getUniformLocation(prog,"in_LightColor"),0.75,0.75,0.68);
                 // Set attribute arrays
