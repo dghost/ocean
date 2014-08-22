@@ -202,19 +202,25 @@
      	uniform sampler2D texture0;
         uniform sampler2D texture1;
  
-		float roughness = 0.75;
+		float roughness = 0.45;
 		float R0 = 0.25;
 		float roughnessSquared = roughness * roughness;
 
-		void setRoughness(float rough)
-		{
-			roughnessSquared = rough * rough;
-		}
-
-		vec4 lightContribution(vec3 L, vec3 N, vec3 E)
-		{
-	
-			float NdotV = dot(N, E);
+        void main(void)
+        {
+            float distance = length(lightVec);
+        	float distance2 = distance * distance;
+            vec3 L = normalize(lightVec);
+            vec3 E = normalize(-eyeVec);
+            
+            vec3 texColor = texture2D(texture0, texCoords).xyz;
+            vec3 N = texture2D(texture1, texCoords).xyz;
+            
+            N *= 2.0;
+            N -= 1.0;
+            
+            
+            float NdotV = dot(N, E);
 			float NdotL = dot(N, L);
 			float angleVN = acos(NdotV);
 
@@ -267,27 +273,12 @@
 				specular = NdotL * (fresnel * geoAtt * rough) / (NdotV * NdotL * 3.14);
 		
 			}
-			return vec4(diffuse + specular,diffuse,specular,NdotL);
-		}    	
-        void main(void)
-        {
-            float distance = length(lightVec);
-        	float distance2 = distance * distance;
-            vec3 lVec = normalize(lightVec);
-            vec3 eVec = normalize(-eyeVec);
-            
-            vec3 texColor = texture2D(texture0, texCoords).xyz;
-            vec3 bump = texture2D(texture1, texCoords).xyz;
-            
-            bump *= 2.0;
-            bump -= 1.0;
-            
-            vec3 light = vec3(0.0);
-            vec4 lighting = lightContribution(lVec,bump,eVec);
-                                    
-            light = vec3(lighting.x);
-            
-	//		light = lighting.x * (  in_Intensity / (in_Attenuation.x + (in_Attenuation.y * distance) + (in_Attenuation.z * distance2)));
+
+			float light = 0.0;
+
+            //light = vec3(lighting.x);
+
+			light = (diffuse + specular) * (  in_Intensity / (in_Attenuation.x + (in_Attenuation.y * distance) + (in_Attenuation.z * distance2)));
             gl_FragColor.xyz = texColor * light * in_LightColor;
             gl_FragColor.a = 1.0;
         }
@@ -544,7 +535,7 @@
                 gl.uniform1f(gl.getUniformLocation(prog,"in_Time"),timeElapsed / 2.0);
                 gl.uniform1f(gl.getUniformLocation(prog,"in_noiseScale"),1.0 / 12.0);
                 
-                gl.uniform1f(gl.getUniformLocation(prog,"in_Intensity"),75.0);
+                gl.uniform1f(gl.getUniformLocation(prog,"in_Intensity"),50.0);
                 gl.uniform3f(gl.getUniformLocation(prog,"in_Attenuation"),0.2,0.75,0.05);
                 gl.uniform3f(gl.getUniformLocation(prog,"in_LightColor"),0.75,0.75,0.68);
                 // Set attribute arrays
