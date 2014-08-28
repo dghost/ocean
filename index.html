@@ -647,8 +647,17 @@
             
             function resize()
             {
-                canvas.width  = window.innerWidth;
-                canvas.height = window.innerHeight;
+                var devicePixelRatio = window.devicePixelRatio || 1;
+                
+                // set the size of the drawingBuffer based on the size it's displayed.
+                
+                canvas.style.width = window.innerWidth + "px";
+                canvas.style.height = window.innerHeight + "px";
+                
+
+                canvas.width = window.innerWidth * devicePixelRatio;
+                canvas.height = window.innerHeight * devicePixelRatio;
+                
                 ratio = window.innerWidth / window.innerHeight;
                 ProjectionMatrix.makeIdentity();
                 ProjectionMatrix.perspective(75,ratio,1,100);
