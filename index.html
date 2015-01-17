@@ -1,12 +1,17 @@
 <html><head>
     <title> WebGL Ocean	</title>
-    
+
+    <!--
+    WebGL Statistics
+    -->
+    <script src="//cdn.webglstats.com/stat.js" defer="defer" async="async"></script>
+
     <!--
      CanvasMatrix class
      (c) Apple Inc
      -->
     <script src="CanvasMatrix.js" type="text/javascript"></script>
-    
+
     <!--
      Vertex shader
      -->
@@ -15,20 +20,20 @@
         attribute vec3 in_Vertex;
         attribute vec3 in_Normal;
         attribute vec2 in_TexCoords;
-        
+
         uniform mat4 ProjectionMatrix;
         uniform mat4 ModelviewMatrix;
         uniform mat4 NormalMatrix;
         uniform float in_Time;
         uniform vec3 in_LightPos;
 		uniform float in_noiseScale;
-        
+
         varying vec3 eyeVec;
         varying vec3 lightVec;
         varying vec2 texCoords;
-        
-        
-        
+
+
+
         // Description : Array and textureless GLSL 2D/3D/4D simplex
         //               noise functions.
         //      Author : Ian McEwan, Ashima Arts.
@@ -37,39 +42,39 @@
         //     License : Copyright (C) 2011 Ashima Arts. All rights reserved.
         //               Distributed under the MIT License. See LICENSE file.
         //               https://github.com/ashima/webgl-noise
-        
+
         vec3 mod289(vec3 x) {
             return x - floor(x * (1.0 / 289.0)) * 289.0;
         }
-        
+
         vec4 mod289(vec4 x) {
             return x - floor(x * (1.0 / 289.0)) * 289.0;
         }
-        
+
         vec4 permute(vec4 x) {
             return mod289(((x*34.0)+1.0)*x);
         }
-        
+
         vec4 taylorInvSqrt(vec4 r)
         {
             return 1.79284291400159 - 0.85373472095314 * r;
         }
-        
+
         float snoise(vec3 v)
         {
             const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
             const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
-            
+
             // First corner
             vec3 i  = floor(v + dot(v, C.yyy) );
             vec3 x0 =   v - i + dot(i, C.xxx) ;
-            
+
             // Other corners
             vec3 g = step(x0.yzx, x0.xyz);
             vec3 l = 1.0 - g;
             vec3 i1 = min( g.xyz, l.zxy );
             vec3 i2 = max( g.xyz, l.zxy );
-            
+
             //   x0 = x0 - 0.0 + 0.0 * C.xxx;
             //   x1 = x0 - i1  + 1.0 * C.xxx;
             //   x2 = x0 - i2  + 2.0 * C.xxx;
@@ -77,115 +82,115 @@
             vec3 x1 = x0 - i1 + C.xxx;
             vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y
             vec3 x3 = x0 - D.yyy;      // -1.0+3.0*C.x = -0.5 = -D.y
-            
+
             // Permutations
             i = mod289(i);
             vec4 p = permute( permute( permute(
                                                i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
                                       + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
                              + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
-            
+
             // Gradients: 7x7 points over a square, mapped onto an octahedron.
             // The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
             float n_ = 0.142857142857; // 1.0/7.0
             vec3  ns = n_ * D.wyz - D.xzx;
-            
+
             vec4 j = p - 49.0 * floor(p * ns.z * ns.z);  //  mod(p,7*7)
-            
+
             vec4 x_ = floor(j * ns.z);
             vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
-            
+
             vec4 x = x_ *ns.x + ns.yyyy;
             vec4 y = y_ *ns.x + ns.yyyy;
             vec4 h = 1.0 - abs(x) - abs(y);
-            
+
             vec4 b0 = vec4( x.xy, y.xy );
             vec4 b1 = vec4( x.zw, y.zw );
-            
+
             //vec4 s0 = vec4(lessThan(b0,0.0))*2.0 - 1.0;
             //vec4 s1 = vec4(lessThan(b1,0.0))*2.0 - 1.0;
             vec4 s0 = floor(b0)*2.0 + 1.0;
             vec4 s1 = floor(b1)*2.0 + 1.0;
             vec4 sh = -step(h, vec4(0.0));
-            
+
             vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
             vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
-            
+
             vec3 p0 = vec3(a0.xy,h.x);
             vec3 p1 = vec3(a0.zw,h.y);
             vec3 p2 = vec3(a1.xy,h.z);
             vec3 p3 = vec3(a1.zw,h.w);
-            
+
             //Normalise gradients
             vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
             p0 *= norm.x;
             p1 *= norm.y;
             p2 *= norm.z;
             p3 *= norm.w;
-            
+
             // Mix final noise value
             vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
             m = m * m;
             return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1),
                                          dot(p2,x2), dot(p3,x3) ) );
         }
-        
+
         void main(void)
         {
             vec4 pos = vec4(in_Vertex,1.0);
-            
+
             float time = in_Time / 10.0;
-            
-            
-            
+
+
+
             vec3 neigh0 = in_Vertex + vec3(0.5,0.0,0.0);
   		 	vec3 neigh1 = in_Vertex + vec3(0.0,0.5,0.0);
   			vec3 neigh2 = in_Vertex + vec3(-0.5,0.0,0.0);
    	 		vec3 neigh3 = in_Vertex + vec3(0.0,-0.5,0.0);
-   	 		
+
    	 		neigh0.z += snoise(vec3(neigh0.x * in_noiseScale,neigh0.y * in_noiseScale,time));
    	 		neigh1.z += snoise(vec3(neigh1.x * in_noiseScale,neigh1.y * in_noiseScale,time));
    	 		neigh2.z += snoise(vec3(neigh2.x * in_noiseScale,neigh2.y * in_noiseScale,time));
    	 		neigh3.z += snoise(vec3(neigh3.x * in_noiseScale,neigh3.y * in_noiseScale,time));
-   	 		
+
    	 		vec3 tangent = mat3(NormalMatrix) * (neigh0 - neigh2);
     		vec3 binormal = mat3(NormalMatrix) * (neigh1 - neigh3);
             vec3 normal = cross(tangent,binormal);
-            
-            
-            
+
+
+
             // generate turbulance
-            
+
             float value = snoise(vec3(pos.x * in_noiseScale,pos.y * in_noiseScale,time));
-            
+
 			texCoords = in_TexCoords + time;
             pos.z += value;
-            
+
             vec3 lightPos = (ModelviewMatrix * vec4(in_LightPos,1.0)).xyz;
-            
-            
+
+
             vec3 vertexPos = (ModelviewMatrix * pos).xyz;
             lightPos -= vertexPos;
-            
-            
+
+
             vec3 view;
             view.x = dot(lightPos,tangent);
             view.y = dot(lightPos,binormal);
             view.z = dot(lightPos,normal);
-            
+
             lightVec = view;
-            
+
             view.x = dot(vertexPos,tangent);
             view.y = dot(vertexPos,binormal);
             view.z = dot(vertexPos,normal);
-            
+
             eyeVec = view;
-            
-            
+
+
             gl_Position = ProjectionMatrix * ModelviewMatrix * pos;
         }
         </script>
-    
+
     <!--
      Fragment shader
      -->
@@ -194,14 +199,14 @@
         varying vec3 eyeVec;
         varying vec3 lightVec;
         varying vec2 texCoords;
-        
+
      	uniform float in_Intensity;
      	uniform vec3 in_Attenuation;
      	uniform vec3 in_LightColor;
-     	
+
      	uniform sampler2D texture0;
         uniform sampler2D texture1;
- 
+
 		float roughness = 0.45;
 		float R0 = 0.25;
 		float roughnessSquared = roughness * roughness;
@@ -212,66 +217,66 @@
         	float distance2 = distance * distance;
             vec3 L = normalize(lightVec);
             vec3 E = normalize(-eyeVec);
-            
+
             vec3 texColor = texture2D(texture0, texCoords).xyz;
             vec3 N = texture2D(texture1, texCoords).xyz;
-            
+
             N *= 2.0;
             N -= 1.0;
-            
-            
+
+
             float NdotV = dot(N, E);
 			float NdotL = dot(N, L);
 			float angleVN = acos(NdotV);
 
 			float diffuse = 0.0;
 			float specular = 0.0;
-	
+
 			float angleLN = acos(NdotL);
-	
+
 			float alpha = max(angleVN, angleLN);
 			float beta = min(angleVN, angleLN);
 			float gamma = dot(E - N * dot(E, N), L - N * dot(L, N));
-	
-	
+
+
 			// calculate A and B
 			float A = 1.0 - 0.5 * (roughnessSquared / (roughnessSquared + 0.57));
-	
+
 			float B = 0.45 * (roughnessSquared / (roughnessSquared + 0.09));
-	
+
 			float C = sin(alpha) * tan(beta);
-	
+
 			// put it all together
 			diffuse = max(0.0,NdotL) * (A + B * max(0.0, gamma) * C);
 			//L1 = max(0.0, L1);
-	
+
 			if(NdotL > 0.0)
 			{
 				vec3 H = normalize(L + E);
-		
+
 				float NdotH = max(dot(N,H),0.0);
 				float VdotH = max(dot(E,H),0.0);
-		
+
 				// geometric attenuation
 				float NH2 = 2.0 * NdotH;
 				float g1 = (NH2 * NdotV) / VdotH;
 				float g2 = (NH2 * NdotL) / VdotH;
 				float geoAtt = min(1.0, min(g1, g2));
-		
+
 				// roughness (or: microfacet distribution function)
 				// beckmann distribution function
 				float r1 = 1.0 / ( 4.0 * roughnessSquared * pow(NdotH, 4.0));
 				float r2 = (NdotH * NdotH - 1.0) / (roughnessSquared * NdotH * NdotH);
 				float rough = r1 * exp(r2);
-		
+
 				// fresnel
 				// Schlick approximation
 				float fresnel = pow(1.0 - VdotH, 5.0);
 				fresnel *= (1.0 - R0);
 				fresnel += R0;
-		
+
 				specular = NdotL * (fresnel * geoAtt * rough) / (NdotV * NdotL * 3.14);
-		
+
 			}
 
 			float light = 0.0;
@@ -283,7 +288,7 @@
             gl_FragColor.a = 1.0;
         }
         </script>
-    
+
     <!--
      WebGL program
      -->
@@ -320,7 +325,7 @@
             //  Return shader
             return shader;
         }
-        
+
         //
         //  Compile shader program
         //
@@ -337,20 +342,20 @@
             //  Return program
             return prog;
         }
-        
-        
+
+
         function initTexture(gl, filename) {
             var texture = gl.createTexture();
             texture.image = new Image();
             texture.image.onload = function() {
                 handleLoadedTexture(gl, texture)
             }
-            
+
             texture.image.src = filename;
             return texture;
         }
-        
-        
+
+
         function handleLoadedTexture(gl, texture) {
             gl.bindTexture(gl.TEXTURE_2D, texture);
             gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
@@ -368,10 +373,10 @@
 			if (ext){
 			  var max = gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
 			  gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, max);
-			}            
+			}
             gl.bindTexture(gl.TEXTURE_2D, null);
         }
-        
+
         var gl,canvas;
         function webGLStart()
         {
@@ -398,39 +403,39 @@
                 alert("Can't get WebGL");
                 return;
             }
-            
-            
+
+
             // for Mozilla
             if(window.addEventListener)
             document.addEventListener('DOMMouseScroll', scrollWheel, false);
-            
+
             //for IE/OPERA etc
             document.onmousewheel = scrollWheel;
-            
+
             //  Load Shader
             var prog = CompileShaderProg(gl,"shader-vs","shader-fs");
-            
+
             //  Set program
             gl.useProgram(prog);
-            
+
             //  Set projection
-            
+
             //    ProjectionMatrix.ortho(-2.5,+2.5,-2.5,+2.5,-2.5,+2.5);
-            
+
             //  Vertex array count
-            
+
             var mesh_vertexBuffer;
             var mesh_indexBuffer;
             var mesh_numTris;
             genMeshBuffers(80,80,0.5);
-            
+
             var numVertexTexture = gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS);
             //alert(numVertexTexture);
-            
+
             var waterTexture = initTexture(gl,"05_DIFFUSE.jpg");
             var bumpTexture = initTexture(gl,"05_NORMAL.jpg");
-            
-            
+
+
             //  Set state to draw scene
             gl.enable(gl.DEPTH_TEST);
             gl.clearColor(0.0,0.0,0.0,1);
@@ -440,28 +445,28 @@
             var ph = 0;
             var th = 45;
             var radius = 5;
-            
+
             // var th_vel = 0;
             // var ph_vel = 0;
             var timeElapsed = 0.0;
             var refTime = new Date();
-            
+
             // target 16ms
-            
+
             var timer = setInterval(function(){update()},16);
             //  Draw scene the first time
-            
+
             var ratio = 1.0;
             var ProjectionMatrix = new CanvasMatrix4();
             resize();
-            
+
             // set light position
             var lightPos_x = 0;
             var lightPos_y = 0;
             var lightPos_z = 15;
-            
-            
-            
+
+
+
             function update()
             {
                 // calculate time elapsed
@@ -469,30 +474,30 @@
                 var msSinceLastUpdate = newTime - refTime;
                 timeElapsed += msSinceLastUpdate / 1000.0;
                 refTime = newTime;
-                
+
                 // camera auto rotation
                 // ph += ph_vel * msSinceLastUpdate / 1000.0;
                 // th += th_vel * msSinceLastUpdate / 1000.0;
-                
+
                 // make the light move in a circle around the origin
                 lightPos_x = 10 * Math.sin(timeElapsed);
                 lightPos_y = 10 * Math.cos(timeElapsed);
-                
+
                 // limit camera
                 if (th > 90)
                 th = 90;
                 else if (th < 10)
                 th = 10;
-                
+
                 if (radius < 5)
                 radius = 5;
                 else if (radius > 50)
                 radius = 50;
                 Display();
             }
-            
-            
-            
+
+
+
             //
             //  Display the scene
             //
@@ -500,87 +505,87 @@
             {
                 //  Clear the screen and Z buffer
                 gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-                
+
                 // Compute modelview matrix
                 var ModelviewMatrix = new CanvasMatrix4();
                 //        ModelviewMatrix.lookat(30,30,10,0,0,0,0,1,0);
                 ModelviewMatrix.makeIdentity();
-                
+
                 // z-axis up
                 ModelviewMatrix.rotate(-90,1,0,0);
-                
+
                 // camera rotation
                 ModelviewMatrix.rotate(th,1,0,0);
                 ModelviewMatrix.rotate(ph,0,1,0);
-                
+
                 // translate to radius of 10
                 ModelviewMatrix.translate(0,0,-radius);
-                
+
                 var NormalMatrix = new CanvasMatrix4(ModelviewMatrix);
                 NormalMatrix.invert();
                 NormalMatrix.transpose();
-                
+
                 // Set shader
                 gl.useProgram(prog);
-                
+
                 //  Set Uniforms
-                
+
                 gl.uniformMatrix4fv(gl.getUniformLocation(prog,"ProjectionMatrix") , false , new Float32Array(ProjectionMatrix.getAsArray()));
                 gl.uniformMatrix4fv(gl.getUniformLocation(prog,"ModelviewMatrix")  , false , new Float32Array(ModelviewMatrix.getAsArray()));
                 gl.uniformMatrix4fv(gl.getUniformLocation(prog,"NormalMatrix")  , false , new Float32Array(NormalMatrix.getAsArray()));
-                
+
                 // set material and light properties
-                
+
                 gl.uniform3f(gl.getUniformLocation(prog,"in_LightPos")  ,lightPos_x,lightPos_y,lightPos_z);
                 gl.uniform1f(gl.getUniformLocation(prog,"in_Time"),timeElapsed / 2.0);
                 gl.uniform1f(gl.getUniformLocation(prog,"in_noiseScale"),1.0 / 12.0);
-                
+
                 gl.uniform1f(gl.getUniformLocation(prog,"in_Intensity"),50.0);
                 gl.uniform3f(gl.getUniformLocation(prog,"in_Attenuation"),0.2,0.75,0.05);
                 gl.uniform3f(gl.getUniformLocation(prog,"in_LightColor"),0.75,0.75,0.68);
                 // Set attribute arrays
-                
-                
+
+
                 // these are already bound, but rebind them anyways
                 gl.bindBuffer(gl.ARRAY_BUFFER,mesh_vertexBuffer);
                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,mesh_indexBuffer);
-                
+
                 var vert = gl.getAttribLocation(prog,"in_Vertex");
                 gl.enableVertexAttribArray(vert);
                 gl.vertexAttribPointer(vert,3,gl.FLOAT,false,20,0);
-                
-                
+
+
                 var tex = gl.getAttribLocation(prog,"in_TexCoords");
                 gl.enableVertexAttribArray(tex);
                 gl.vertexAttribPointer(tex,2,gl.FLOAT,false,20,12);
-                
+
                 gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, waterTexture);
                 gl.uniform1i(gl.getUniformLocation(prog,"texture0"), 0);
-                
+
                 gl.activeTexture(gl.TEXTURE1);
                 gl.bindTexture(gl.TEXTURE_2D, bumpTexture);
                 gl.uniform1i(gl.getUniformLocation(prog,"texture1"), 1);
-                
+
                 // draw the mesh
                 gl.drawElements(gl.TRIANGLES, mesh_numTris, gl.UNSIGNED_SHORT, 0);
-                
+
                 // teardown
                 gl.disableVertexAttribArray(vert);
                 gl.disableVertexAttribArray(tex);
-                
-                
-                
+
+
+
                 //  Flush
                 gl.flush ();
             }
-            
+
             // generate mesh buffer and upload it to the GPU
-            
+
             function genMeshBuffers(height,width,scale)
             {
                 var mesh = new Array();
-                
+
                 for(var i = 0 ; i <= width; i++)
                 {
                     for(var j = 0 ; j <= height ; j++)
@@ -588,22 +593,22 @@
                         mesh.push((i - width / 2.0) * scale);
                         mesh.push((j - height / 2.0) * scale);
                         mesh.push(0.0);
-                        
+
                         /* don't push normals
                          mesh.push(0.0);
                          mesh.push(0.0);
                          mesh.push(1.0);
                          */
-                        
+
                         mesh.push(i / width / scale);
                         mesh.push(j / height / scale);
-                        
+
                     }
                 }
-                
+
                 //  Cube vertex coordinates
                 var index = new Array();
-                
+
                 for(var i = 0 ; i < width ; i++)
                 {
                     for (var j = 0 ; j < height-1 ; j+=2)
@@ -611,53 +616,53 @@
                         index.push(i * (height + 1) + j);
                         index.push((i + 1) * (height + 1) + j);
                         index.push((i) * (height + 1) + (j + 1));
-                        
+
                         index.push((i) * (height + 1) + (j + 1));
                         index.push((i + 1) * (height + 1) + j);
                         index.push((i + 1) * (height + 1) + (j + 1));
-                        
+
                         index.push((i + 1) * (height + 1) + (j + 1));
                         index.push((i + 1) * (height + 1) + (j + 2));
                         index.push((i) * (height + 1) + (j + 1));
-                        
+
                         index.push((i) * (height + 1) + (j + 1));
                         index.push((i + 1) * (height + 1) + (j + 2));
                         index.push((i) * (height + 1) + (j + 2));
                     }
-                    
+
                 }
-                
-                
+
+
                 mesh_numTris = index.length;
-                
+
                 mesh_vertexBuffer = gl.createBuffer();
                 gl.bindBuffer(gl.ARRAY_BUFFER,mesh_vertexBuffer);
                 gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(mesh),gl.STATIC_DRAW);
-                
+
                 mesh_indexBuffer = gl.createBuffer();
                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,mesh_indexBuffer);
                 gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(index),gl.STATIC_DRAW);
-                
+
             }
-            
-            
+
+
             //
             //  Resize canvas
             //
-            
+
             function resize()
             {
                 var devicePixelRatio = window.devicePixelRatio || 1;
-                
+
                 // set the size of the drawingBuffer based on the size it's displayed.
-                
+
                 canvas.style.width = window.innerWidth + "px";
                 canvas.style.height = window.innerHeight + "px";
-                
+
 
                 canvas.width = window.innerWidth * devicePixelRatio;
                 canvas.height = window.innerHeight * devicePixelRatio;
-                
+
                 ratio = window.innerWidth / window.innerHeight;
                 ProjectionMatrix.makeIdentity();
                 ProjectionMatrix.perspective(75,ratio,1,100);
@@ -668,7 +673,7 @@
             {
                 resize();
             }
-            
+
             //
             //  Mouse button pressed
             //
@@ -678,7 +683,7 @@
                 x0 = ev.clientX;
                 y0 = ev.clientY;
             }
-            
+
             //
             //  Mouse button released
             //
@@ -686,7 +691,7 @@
             {
                 move  = 0;
             }
-            
+
             //
             //  Mouse movement
             //
@@ -701,35 +706,35 @@
                 y0 = ev.clientY;
                 //  Redisplay
             }
-            
+
             function scrollWheel(event)
             {
                 var delta = 0;
-                
+
                 if (!event) event = window.event;
-                
+
                 // normalize the delta
                 if (event.wheelDelta) {
-                    
+
                     // IE and Opera
                     delta = event.wheelDelta / 60;
-                    
+
                 } else if (event.detail) {
-                    
+
                     // W3C
                     delta = -event.detail / 2;
                 }
-                
+
                 radius -= delta;
             }
         }
         </script>
-    
+
     <!--
      Web page
      -->
 </head>
-    
+
     <body onload="webGLStart();" onresize="canvas.resize();">
         <canvas id="canvas" width=400 height=400></canvas>
     </body></html>
